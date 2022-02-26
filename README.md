@@ -1,2 +1,2 @@
 # CDKey
-A Unturned Rocket Plugin for CDK
+A Unturned Rocket Plugin about CDK Support MySQL

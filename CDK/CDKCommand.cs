@@ -18,7 +18,7 @@ namespace CDK
 
         public AllowedCaller AllowedCaller => AllowedCaller.Player;
 
-        public string Syntax => "CDK [reset] <Key>";
+        public string Syntax => "CDK <Key>";
 
         public List<string> Permissions => new List<string>() { "CDK" };
 
@@ -26,34 +26,36 @@ namespace CDK
 
         public void Execute(IRocketPlayer caller,string[] args)
         {
-            if (!Main.Instance.Configuration.Instance.MySQLSupport)
-            {
-                if (args.Length == 1)
-                {
-                    Main.Instance.CDKRedeem(UnturnedPlayer.FromName(caller.DisplayName), args[0]);
-                }
-                else if (args.Length == 2 && args[0].ToLower() == "reset")
-                {
-                    if (caller.HasPermission("cdk.reset"))
-                    {
-                        if (Main.Instance.ResetKeyCount(args[1]))
-                        {
-                            UnturnedChat.Say(caller, Main.Instance.Translate("reset_count"));
-                        }
-                        else
-                        {
-                            UnturnedChat.Say(caller, Main.Instance.Translate("key_dones't_exist"), UnityEngine.Color.red);
-                        }
-                    }
-                }
-                else
-                {
-                    UnturnedChat.Say(caller, Main.Instance.Translate("invaild_param"), UnityEngine.Color.red);
-                }
-            }
-            else if(Main.Instance.Configuration.Instance.MySQLSupport)
-            {
-                if(args.Length == 1)
+            //if (!Main.Instance.Configuration.Instance.MySQLSupport)
+            //{
+            //    if (args.Length == 1)
+            //    {
+            //        Main.Instance.CDKRedeem(UnturnedPlayer.FromName(caller.DisplayName), args[0]);
+            //    }
+            //    else if (args.Length == 2 && args[0].ToLower() == "reset")
+            //    {
+            //        if (caller.HasPermission("cdk.reset"))
+            //        {
+            //            if (Main.Instance.ResetKeyCount(args[1]))
+            //            {
+            //                UnturnedChat.Say(caller, Main.Instance.Translate("reset_count"));
+            //            }
+            //            else
+            //            {
+            //                UnturnedChat.Say(caller, Main.Instance.Translate("key_dones't_exist"), UnityEngine.Color.red);
+            //            }
+            //        }
+            //    }
+            //    else
+            //    {
+            //        UnturnedChat.Say(caller, Main.Instance.Translate("invaild_param"), UnityEngine.Color.red);
+            //    }
+            //}
+            //else if(Main.Instance.Configuration.Instance.MySQLSupport)
+            //{
+            if(args.Length == 1)
+              {
+                if (!Main.Instance.Database.IsPurchased(UnturnedPlayer.FromName(caller.DisplayName), args[0]))
                 {
                     switch (Main.Instance.Database.RedeemCDK(UnturnedPlayer.FromName(caller.DisplayName), args[0]))
                     {
@@ -67,7 +69,7 @@ namespace CDK
                             UnturnedChat.Say(caller, Main.Instance.Translate("key_dones't_exist"), UnityEngine.Color.red);
                             break;
                         case DatabaseManager.RedeemCDKResult.MaxRedeemed:
-                            UnturnedChat.Say(caller, Main.Instance.Translate("maxcount_reached"),UnityEngine.Color.red);
+                            UnturnedChat.Say(caller, Main.Instance.Translate("maxcount_reached"), UnityEngine.Color.red);
                             break;
                         case DatabaseManager.RedeemCDKResult.Renewed:
                             UnturnedChat.Say(caller, Main.Instance.Translate("key_renewed"));
@@ -75,12 +77,19 @@ namespace CDK
                         case DatabaseManager.RedeemCDKResult.Error:
                             UnturnedChat.Say(caller, Main.Instance.Translate("mysql_error"), UnityEngine.Color.red);
                             break;
+                        case DatabaseManager.RedeemCDKResult.PlayerNotMatch:
+                            UnturnedChat.Say(caller, Main.Instance.Translate("player_not_match"), UnityEngine.Color.red);
+                            break;
                     }
                 }
-                else if(args.Length == 2 && args[0].ToLower() == "reset")
+                else
                 {
-
+                    UnturnedChat.Say(caller, Main.Instance.Translate("already_purchased"), UnityEngine.Color.red);
                 }
+             }
+            else
+            {
+                UnturnedChat.Say(caller, Main.Instance.Translate("invaild_param"), UnityEngine.Color.red);
             }
         }
     }

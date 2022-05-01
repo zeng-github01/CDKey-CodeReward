@@ -44,8 +44,8 @@ namespace CDK
 
         protected override void Unload()
         {
-            Rocket.Core.Logging.Logger.Log("CDK Plugin loaded");
             U.Events.OnPlayerConnected -= PlayerConnect;
+            Rocket.Core.Logging.Logger.Log("CDK Plugin unloaded");
         }
         //#region Redeem
         //public void CDKRedeem(UnturnedPlayer player,string CDK)

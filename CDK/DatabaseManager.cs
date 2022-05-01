@@ -97,11 +97,13 @@ namespace CDK
                     $"select `ValidUntil` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}'");
                     var Reputation = ExecuteQuery(true,
                     $"select `Reputation` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}'");
+                    var Amount = ExecuteQuery(true,
+                    $"select `Amount` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = {CDK}");
 
                     if (!Convert.IsDBNull(MaxRedeem) && (int)RedeemedTimes >= (int)MaxRedeem) return RedeemCDKResult.MaxRedeemed;
 
 
-                    if (!Convert.IsDBNull(Items))
+                    if (!Convert.IsDBNull(Items) && Convert.IsDBNull(Amount))
                     {
                         string[] _items = Items.ToString().Split(',');
                         foreach (string item in _items)
@@ -111,6 +113,27 @@ namespace CDK
                                 if (!player.GiveItem(s, 1))
                                 {
                                     UnturnedChat.Say(player, Main.Instance.Translate("items_give_fail"), UnityEngine.Color.red);
+                                }
+                            }
+                        }
+                    }
+                    else if(!Convert.IsDBNull(Items) && !Convert.IsDBNull(Amount))
+                    {
+                        string[] _items = Items.ToString().Split(',');
+                        string[] _amount = Amount.ToString().Split(',');
+                        foreach (string item in _items)
+                        {
+                            foreach (string amount in _amount)
+                            {
+                                if (ushort.TryParse(item, out ushort s))
+                                {
+                                    if (byte.TryParse(amount, out byte am))
+                                    {
+                                        if (!player.GiveItem(s,am))
+                                        {
+                                            UnturnedChat.Say(player, Main.Instance.Translate("items_give_fail"), UnityEngine.Color.red);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -137,14 +160,13 @@ namespace CDK
                     {
                         Main.ExecuteDependencyCode("Uconomy", (IRocketPlugin plugin) =>
                         {
-                            Uconomy.Instance.Database.IncreaseBalance(player.CSteamID.ToString(), Convert.ToDecimal(Money));
-                            UnturnedChat.Say(player, Main.Instance.Translate("uconomy_gain", Convert.ToDecimal(Money), Uconomy.Instance.Configuration.Instance.MoneyName));
+                            if (plugin.State == PluginState.Loaded)
+                            {
+                                Uconomy.Instance.Database.IncreaseBalance(player.CSteamID.ToString(), Convert.ToDecimal(Money));
+                                UnturnedChat.Say(player, Main.Instance.Translate("uconomy_gain", Convert.ToDecimal(Money), Uconomy.Instance.Configuration.Instance.MoneyName));
+                            }
                         });
                     }
-                    //if(!Convert.IsDBNull(Reputation))
-                    //{
-                    //    player.Reputation += Convert.ToInt32(Reputation);
-                    //}
                     if (Convert.IsDBNull(ValidUntil))
                     {
                         ExecuteQuery(true,
@@ -228,7 +250,7 @@ namespace CDK
 
             if (cdk == null)
                 ExecuteQuery(false,
-                    $"CREATE TABLE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` (`CDK` varchar(32) NOT NULL,`Items` varchar(32), `Vehicle` int(16), `Experience` int(32), `Reputation` int(32), `Money` decimal(15,2) , `GrantPermissionGroup` varchar(32) , `MaxRedeem` int(32), `RedeemedTimes` int(6) NOT NULL DEFAULT '0', `ValidUntil` timestamp, `EnableRenew` int(1) DEFAULT '0', `Owner` varchar(32) ,PRIMARY KEY (`CDK`))");
+                    $"CREATE TABLE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` (`CDK` varchar(32) NOT NULL,`Items` varchar(32), `Amount` varchar(32), `Vehicle` int(16), `Experience` int(32), `Reputation` int(32), `Money` decimal(15,2) , `GrantPermissionGroup` varchar(32) , `MaxRedeem` int(32), `RedeemedTimes` int(6) NOT NULL DEFAULT '0', `ValidUntil` timestamp, `EnableRenew` BOOLEAN DEFAULT 'false', `Owner` varchar(32) ,PRIMARY KEY (`CDK`))");
 
             var log = ExecuteQuery(true,
                $"show tables like '{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}'");
@@ -259,7 +281,14 @@ namespace CDK
                 ExecuteQuery(false, $"ALTER TABLE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` MODIFY `MaxRedeem` int(32);");
                 Main.Instance.Configuration.Instance.MySQLTableVer = 3;
                 Main.Instance.Configuration.Save();
-                
+            }
+            if(Main.Instance.Configuration.Instance.MySQLTableVer == 3)
+            {
+                Logger.Log("Updating database table version to 4");
+                ExecuteQuery(true, $"ALTER TABLE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` MODIFY `EnableRenew` BOOLEAN");
+                ExecuteQuery(true, $"ALTER TABLE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` ADD `Amount` varchar(32) AFTER `Items`");
+                Main.Instance.Configuration.Instance.MySQLTableVer = 4;
+                Main.Instance.Configuration.Save();
             }
            
         }

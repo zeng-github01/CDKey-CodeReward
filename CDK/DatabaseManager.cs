@@ -210,7 +210,7 @@ namespace CDK
            var result = ExecuteQuery(true, $"select `CDK` from (select * from `{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` where `SteamID` = '{player.Id}') AS ALI where `ValidUntil` < now();");
             if(result != null)
             {
-                List<string> cdklist = new List<string> {};
+                List<string> cdklist = new List<string>();
                 do
                 {
                     string cdk = result.ToString();

@@ -250,7 +250,7 @@ namespace CDK
 
             if (cdk == null)
                 ExecuteQuery(false,
-                    $"CREATE TABLE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` (`CDK` varchar(32) NOT NULL,`Items` varchar(32), `Amount` varchar(32), `Vehicle` int(16), `Experience` int(32), `Reputation` int(32), `Money` decimal(15,2) , `GrantPermissionGroup` varchar(32) , `MaxRedeem` int(32), `RedeemedTimes` int(6) NOT NULL DEFAULT '0', `ValidUntil` timestamp, `EnableRenew` BOOLEAN DEFAULT 'false', `Owner` varchar(32) ,PRIMARY KEY (`CDK`))");
+                    $"CREATE TABLE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` (`CDK` varchar(32) NOT NULL,`Items` varchar(32), `Amount` varchar(32), `Vehicle` int(16), `Experience` int(32), `Reputation` int(32), `Money` decimal(15,2) , `GrantPermissionGroup` varchar(32) , `MaxRedeem` int(32), `RedeemedTimes` int(6) NOT NULL DEFAULT '0', `ValidUntil` timestamp, `EnableRenew` BOOLEAN DEFAULT '0', `Owner` varchar(32) ,PRIMARY KEY (`CDK`))");
 
             var log = ExecuteQuery(true,
                $"show tables like '{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}'");
@@ -285,7 +285,7 @@ namespace CDK
             if(Main.Instance.Configuration.Instance.MySQLTableVer == 3)
             {
                 Logger.Log("Updating database table version to 4");
-                ExecuteQuery(true, $"ALTER TABLE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` MODIFY `EnableRenew` BOOLEAN");
+                ExecuteQuery(true, $"ALTER TABLE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` MODIFY `EnableRenew` BOOLEAN DEFALT '0'");
                 ExecuteQuery(true, $"ALTER TABLE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` ADD `Amount` varchar(32) AFTER `Items`");
                 Main.Instance.Configuration.Instance.MySQLTableVer = 4;
                 Main.Instance.Configuration.Save();

@@ -356,14 +356,15 @@ namespace CDK
                 {"permission_grant_error","Failed to add permission group" },
                 //{"reset_count","reset key {0}'s maxcount!" },
                 {"uconomy_gain","You got {0} {1}" },
-                {"mysql_error","MySQL execution error!" },
+                {"error","error!" },
                 //{"cdk_created","You created CDK: {0}" },
                 //{"create_cdk_exist","This CDK already created! " },
                 //{"cdk_create_failure","Failed to create cdk.please check command syntax!" },
                 {"invaild_parameter","out of patamter! correct syntax:{0}"},
                 {"key_renewed","Your key has been renewed!" },
                 {"key_expired","Your key has been expired:{0}" },
-                {"already_purchased","You already purchased this permission group" }
+                {"already_purchased","You already purchased this permission group" },
+                {"invaild_param",""}
             };
     }
 }

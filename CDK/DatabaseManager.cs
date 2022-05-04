@@ -10,13 +10,16 @@ using Rocket.Unturned.Chat;
 using Rocket.Core;
 using fr34kyn01535.Uconomy;
 using Rocket.API;
+using CDK.Data;
+using Steamworks;
 //using UnityEngine;
+using Rocket.Core.Plugins;
 
 namespace CDK
 {
     public class DatabaseManager
     {
-        public enum RedeemCDKResult {Success,Redeemed,KeyNotFound,MaxRedeemed,Renewed,Error,PlayerNotMatch }
+        public enum RedeemCDKResult { Success, Redeemed, KeyNotFound, MaxRedeemed, Renewed, Error, PlayerNotMatch }
 
         //public enum CreateCDKResult { Success,Failure,KeyExist,Error}
         internal DatabaseManager()
@@ -40,7 +43,7 @@ namespace CDK
         //                ExecuteQuery(true, $"INSERT IGNORE INTO `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` (CDK,Items,Vehicle,Experience,Money,GrantPermissionGroup,MaxRedeem) values('{CDK}','{Items}','{Convert.ToUInt16(Vehicle)}','{Convert.ToUInt32(Experience)}','{Convert.ToDecimal(Money)}','{GrantPermissionGroup}','{Convert.ToInt32(MaxRedem)}')");
         //                return CreateCDKResult.Success;
 
-                        
+
         //            }
         //            catch (Exception ex)
         //            {
@@ -57,148 +60,104 @@ namespace CDK
         //}
         //#endregion
 
-        public RedeemCDKResult RedeemCDK(UnturnedPlayer player,string CDK)
+        public RedeemCDKResult RedeemCDK(UnturnedPlayer player, string CDK)
         {
             try
             {
-                var cdk = ExecuteQuery(true,
-                   $"SELECT 1 FROM `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` WHERE `CDK` ='{CDK}' LIMIT 1;");
-                if (cdk == null) return RedeemCDKResult.KeyNotFound;
-                var Owner = ExecuteQuery(true, $"select `Owner` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}'");
-                if(!Convert.IsDBNull(Owner))
+                var cdkdata = GetCDKData(CDK);
+                var logdata = GetLogData(player.CSteamID, CDK);
+                if (cdkdata != null)
                 {
-                    if (Owner.ToString() != player.CSteamID.ToString()) return RedeemCDKResult.PlayerNotMatch;
-                }
-
-                var EnaleRenew = ExecuteQuery(true, $"select `EnableRenew` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}'");
-
-                if ((int)EnaleRenew == 0)
-                {
-                    var log = ExecuteQuery(true,
-                        $"select `SteamID` from `{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` where `CDK` = '{CDK}';");
-
-                    if (log != null && log.ToString() == player.Id) return RedeemCDKResult.Redeemed;
-
-                    var Items = ExecuteQuery(true,
-                    $"select `Items` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}';");
-                    var Vehicle = ExecuteQuery(true,
-                    $"select `Vehicle` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}';");
-                    var Experience = ExecuteQuery(true,
-                    $"select `Experience` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}';");
-                    var Money = ExecuteQuery(true,
-                    $"select `Money` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}';");
-                    var GrantPermissionGroup = ExecuteQuery(true,
-                    $"select `GrantPermissionGroup` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}';");
-                    var MaxRedeem = ExecuteQuery(true,
-                    $"select `MaxRedeem` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}';");
-                    var RedeemedTimes = ExecuteQuery(true,
-                    $"select `RedeemedTimes` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}';");
-                    var ValidUntil = ExecuteQuery(true,
-                    $"select `ValidUntil` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}'");
-                    var Reputation = ExecuteQuery(true,
-                    $"select `Reputation` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}'");
-                    var Amount = ExecuteQuery(true,
-                    $"select `Amount` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = {CDK}");
-
-                    if (!Convert.IsDBNull(MaxRedeem) && (int)RedeemedTimes >= (int)MaxRedeem) return RedeemCDKResult.MaxRedeemed;
-
-
-                    if (!Convert.IsDBNull(Items) && Convert.IsDBNull(Amount))
+                    if (cdkdata.Owner != null && cdkdata.Owner != player.CSteamID)
                     {
-                        string[] _items = Items.ToString().Split(',');
-                        foreach (string item in _items)
+                        return RedeemCDKResult.PlayerNotMatch;
+                    }
+                    if (cdkdata.MaxRedeem != null && cdkdata.RedeemedTimes >= cdkdata.MaxRedeem.Value)
+                    {
+                        return RedeemCDKResult.MaxRedeemed;
+                    }
+                    if (logdata != null && !cdkdata.Renew)
+                    {
+                        return RedeemCDKResult.Redeemed;
+                    }
+                    else if (logdata == null && !cdkdata.Renew)
+                    {
+
+                        if (cdkdata.Items != string.Empty && cdkdata.Amount == string.Empty)
                         {
-                            if (ushort.TryParse(item, out ushort s))
+                            foreach (string item in cdkdata.Items.Split(','))
                             {
-                                if (!player.GiveItem(s, 1))
+                                player.GiveItem(Convert.ToUInt16(item), 1);
+                            }
+                        }
+                        else if (cdkdata.Items != string.Empty && cdkdata.Amount != string.Empty)
+                        {
+                            foreach (string item in cdkdata.Items.Split(','))
+                            {
+                                foreach (string amount in cdkdata.Amount.Split(','))
                                 {
-                                    UnturnedChat.Say(player, Main.Instance.Translate("items_give_fail"), UnityEngine.Color.red);
+                                    player.GiveItem(Convert.ToUInt16(item), Convert.ToByte(amount));
                                 }
                             }
                         }
-                    }
-                    else if(!Convert.IsDBNull(Items) && !Convert.IsDBNull(Amount))
-                    {
-                        string[] _items = Items.ToString().Split(',');
-                        string[] _amount = Amount.ToString().Split(',');
-                        foreach (string item in _items)
+
+                        if (cdkdata.Vehicle != null)
                         {
-                            foreach (string amount in _amount)
+                            player.GiveVehicle(cdkdata.Vehicle.Value);
+                        }
+                        if (cdkdata.Reputation != null)
+                        {
+                            player.Reputation += cdkdata.Reputation.Value;
+                        }
+                        if (cdkdata.Experience != null)
+                        {
+                            player.Experience += cdkdata.Experience.Value;
+                        }
+                        if (cdkdata.Money != null)
+                        {
+                            Main.ExecuteDependencyCode("Uconomy", (IRocketPlugin plugin) =>
                             {
-                                if (ushort.TryParse(item, out ushort s))
+                                if (plugin.State == PluginState.Loaded)
                                 {
-                                    if (byte.TryParse(amount, out byte am))
-                                    {
-                                        if (!player.GiveItem(s,am))
-                                        {
-                                            UnturnedChat.Say(player, Main.Instance.Translate("items_give_fail"), UnityEngine.Color.red);
-                                        }
-                                    }
+                                    Uconomy.Instance.Database.IncreaseBalance(player.Id, cdkdata.Money.Value);
+                                    UnturnedChat.Say(player, Main.Instance.Translate("uconomy_gain", Convert.ToDecimal(cdkdata.Money.Value), Uconomy.Instance.Configuration.Instance.MoneyName));
                                 }
-                            }
+                            });
                         }
-                    }
-                    if (!Convert.IsDBNull(Experience)) player.Experience += Convert.ToUInt32(Experience);
-                    if(!Convert.IsDBNull(Reputation)) player.Reputation += Convert.ToInt32(Reputation);
-                    if (!Convert.IsDBNull(Vehicle)) player.GiveVehicle(Convert.ToUInt16(Vehicle));
-                    if (!Convert.IsDBNull(GrantPermissionGroup))
-                    {
-                        switch (R.Permissions.AddPlayerToGroup(GrantPermissionGroup.ToString(), player))
+
+                        if (cdkdata.GrantPermissionGroup != string.Empty)
                         {
-                            case Rocket.API.RocketPermissionsProviderResult.Success:
-                                UnturnedChat.Say(player, Main.Instance.Translate("permission_granted", GrantPermissionGroup));
-                                break;
-                            case Rocket.API.RocketPermissionsProviderResult.DuplicateEntry:
-                                UnturnedChat.Say(player, Main.Instance.Translate("permission_duplicate_entry", GrantPermissionGroup), UnityEngine.Color.yellow);
-                                break;
-                            default:
-                                UnturnedChat.Say(player, Main.Instance.Translate("permission_grant_error"), UnityEngine.Color.red);
-                                break;
-                        }
-                    }
-                    if (!Convert.IsDBNull(Money))
-                    {
-                        Main.ExecuteDependencyCode("Uconomy", (IRocketPlugin plugin) =>
-                        {
-                            if (plugin.State == PluginState.Loaded)
+                            switch (R.Permissions.AddPlayerToGroup(cdkdata.GrantPermissionGroup, player))
                             {
-                                Uconomy.Instance.Database.IncreaseBalance(player.CSteamID.ToString(), Convert.ToDecimal(Money));
-                                UnturnedChat.Say(player, Main.Instance.Translate("uconomy_gain", Convert.ToDecimal(Money), Uconomy.Instance.Configuration.Instance.MoneyName));
+                                case Rocket.API.RocketPermissionsProviderResult.Success:
+                                    UnturnedChat.Say(player, Main.Instance.Translate("permission_granted", cdkdata.GrantPermissionGroup));
+                                    break;
+                                case Rocket.API.RocketPermissionsProviderResult.DuplicateEntry:
+                                    UnturnedChat.Say(player, Main.Instance.Translate("permission_duplicate_entry", cdkdata.GrantPermissionGroup), UnityEngine.Color.yellow);
+                                    break;
+                                default:
+                                    UnturnedChat.Say(player, Main.Instance.Translate("permission_grant_error"), UnityEngine.Color.red);
+                                    break;
                             }
-                        });
+                        }
+
+                        SaveLogToDB(new LogData(CDK, player.CSteamID, DateTime.Now, cdkdata.ValidUntil));
+                        IncreaseRedeemedTime(CDK);
                     }
-                    if (Convert.IsDBNull(ValidUntil))
+                    else if (logdata != null && cdkdata.Renew)
                     {
-                        ExecuteQuery(true,
-                           $"insert ignore into `{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` (SteamID,CDK) values('{player.Id}','{CDK}');");
+                        R.Permissions.AddPlayerToGroup(cdkdata.GrantPermissionGroup, player);
+                        UpdateLogInDB(new LogData(CDK, player.CSteamID, DateTime.Now, cdkdata.ValidUntil));
+                        UpdateRenew(CDK);
+                        return RedeemCDKResult.Renewed;
                     }
-                    else
-                    {
-                        ExecuteQuery(false,
-                           $"insert ignore into `{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` (SteamID,CDK,ValidUntil) values('{player.Id}','{CDK}','{ValidUntil}');");
-                    }
-                    //write log into mysql
-                    if (Convert.ToInt32(MaxRedeem) > 0)
-                    {
-                        ExecuteQuery(true,
-                    $"update `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}`set`RedeemedTimes` = RedeemedTimes +1 where `CDK` = '{CDK}'");
-                        return RedeemCDKResult.Success;
-                    }
-                    // ExecuteQuery(true,
-                    //$"DELETE FORM `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}'");
-                    return RedeemCDKResult.Success;
                 }
-                else if((int)EnaleRenew == 1)
+                else
                 {
-                    var PermissionGroup = ExecuteQuery(true, $"select `GrantPermissionGroup` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}';");
-                    var ValidUntil = ExecuteQuery(true, $"select `ValidUntil` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{CDK}'");
-                    R.Permissions.AddPlayerToGroup(PermissionGroup.ToString(), player);
-                    ExecuteQuery(true, $"UPDATE `{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` set `ValidUntil` = '{ValidUntil}' WHERE `CDK` = '{CDK}' AND `SteamID` = '{player.Id}'");
-                    ExecuteQuery(true, $"UPDATE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` set `EnableRenew` = 0 WHERE `CDK` = '{CDK}'");
-                    return RedeemCDKResult.Renewed;
+                    return RedeemCDKResult.KeyNotFound;
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Logger.LogException(ex);
             }
@@ -207,32 +166,106 @@ namespace CDK
 
         public void CheckValid(UnturnedPlayer player)
         {
-           var result = ExecuteQuery(true, $"select `CDK` from (select * from `{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` where `SteamID` = '{player.Id}') AS ALI where `ValidUntil` < now();");
-            if(result != null)
+            LogData logData = GetLogData(player.CSteamID);
+            if (logData != null)
             {
-                List<string> cdklist = new List<string>();
                 do
                 {
-                    string cdk = result.ToString();
-                    var PermissionGroup = ExecuteQuery(true, $"select `GrantPermissionGroup` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = '{cdk}';") ;
-                    R.Permissions.RemovePlayerFromGroup(PermissionGroup.ToString(), player);
-                    cdklist.Add(cdk);
-                    result = ExecuteQuery(true, $"select `CDK` from (select * from `{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` where `SteamID` = '{player.Id}') AS ALI where `ValidUntil` < now();");
-                } while (result == null);
-                foreach(string cdk in cdklist)
-                {
-                    UnturnedChat.Say(player, Main.Instance.Translate("key_expired",cdk), UnityEngine.Color.yellow);
-                }
-               
+                    CDKData cDKData = GetCDKData(logData.CDK);
+                    R.Permissions.RemovePlayerFromGroup(cDKData.GrantPermissionGroup, player);
+                    UnturnedChat.Say(player, Main.Instance.Translate("key_expired", logData.CDK));
+                    logData = GetLogData(player.CSteamID);
+                } while (logData == null);
             }
         }
 
-        public bool IsPurchased(UnturnedPlayer player,string CDK) //check player if is first purchase
+        private CDKData BuildCDKData(MySqlDataReader reader)
+        {
+            return new CDKData(reader.GetString("CDK"), reader.GetString("Items"), reader.GetString("Amount"), reader.GetUInt16("Vehicle"), reader.GetUInt16("Experience"), reader.GetDecimal("Money"), reader.GetInt32("Reputation"), reader.GetString("GrantPermissionGroup"), reader.GetInt32("RedeemedTimes"), reader.GetInt32("MaxRedeem"), reader.GetDateTime("ValidUntil"), new CSteamID(reader.GetUInt64("Owner")), reader.GetBoolean("EnableRenew"));
+        }
+        private LogData BuildLogData(MySqlDataReader reader)
+        {
+            return new LogData(reader.GetString("CDK"), new CSteamID(reader.GetUInt64("SteamID")), reader.GetDateTime("Redeemed Time"), reader.GetDateTime("ValidUntil"));
+        }
+
+        public CDKData GetCDKData(string cdk)
+        {
+            CDKData data = null;
+            try
+            {
+                MySqlConnection connection = CreateConnection();
+                MySqlCommand command = connection.CreateCommand();
+                command.CommandText = $"SELECT * FROM `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` WHERE `CDK` = '{cdk}'";
+                connection.Open();
+                MySqlDataReader reader = command.ExecuteReader();
+                if (reader.Read())
+                {
+                    data = BuildCDKData(reader);
+                }
+                connection.Close();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogException(ex);
+            }
+            return data;
+        }
+
+        public LogData GetLogData(CSteamID steamID, string cdk = null)
+        {
+            LogData logData = null;
+            try
+            {
+                MySqlConnection connection = CreateConnection();
+                MySqlCommand command = connection.CreateCommand();
+                if (cdk != null)
+                {
+                    command.CommandText = $"SELECT * FROM `{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` WHERE `SteamID` = '{steamID} AND `CDK` = {cdk}'";
+                }
+                else
+                {
+                    command.CommandText = $"select 1 from `{ Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` where `SteamID` = '{steamID} and `ValidUntil` < now()";
+                }
+                connection.Open();
+                MySqlDataReader reader = command.ExecuteReader();
+                if (reader.Read())
+                {
+                    logData = BuildLogData(reader);
+                }
+                connection.Close();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogException(ex);
+            }
+            return logData;
+        }
+
+        internal void SaveLogToDB(LogData logData)
+        {
+            ExecuteQuery(true, $"INSERT INTO `{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` (CDK,SteamID,Redeemed Time,ValidUntil) VALUES('{logData.CDK}','{logData.SteamID}','{logData.RedeemTime}','{logData.ValidUntil}')");
+        }
+
+        internal void UpdateLogInDB(LogData logData)
+        {
+            ExecuteQuery(true, $"UPDATE `{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` SET `ValidUntil` = '{logData.ValidUntil}',`Redeemed Time` = {logData.RedeemTime} WHERE `SteamID` = '{logData.SteamID}' AND `CDK` = '{logData.CDK}'");
+        }
+        internal void UpdateRenew(string cdk)
+        {
+            ExecuteQuery(true, $"UPDATE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` SET `EnableRenew` = 0 WHERE `CDK` = {cdk}");
+        }
+
+        internal void IncreaseRedeemedTime(string cdk)
+        {
+            ExecuteQuery(true, $"UPDATE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` SET `RedeemedTimes` = RedeemedTimes +1 where `CDK` = '{cdk}' ");
+        }
+
+        public bool IsPurchased(UnturnedPlayer player, string CDK) //check player if is first purchase
         {
             bool result;
             var PermissionGroup = ExecuteQuery(true, $"select `GrantPermissionGroup` from `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` where `CDK` = {CDK};");
             var search = ExecuteQuery(true, $"select 1 from {Main.Instance.Configuration.Instance.DatabaseCDKTableName} where `GrantPermissionGroup` = '{PermissionGroup}' and `Owner` = '{player.Id}';");
-            if(search == null)
+            if (search == null)
             {
                 result = false;
             }
@@ -240,7 +273,7 @@ namespace CDK
             {
                 result = true;
             }
-            
+
             return result;
         }
         internal void CheckSchema() // intial mysql table
@@ -255,11 +288,11 @@ namespace CDK
             var log = ExecuteQuery(true,
                $"show tables like '{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}'");
 
-            if(log == null)
+            if (log == null)
                 ExecuteQuery(false,
-                    $"CREATE TABLE `{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` (`CDK` varchar(32) NOT NULL, `SteamID` varchar(32), `Redeemed Time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, `ValidUntil` timestamp,PRIMARY KEY (`CDK`))");
+                    $"CREATE TABLE `{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` (`CDK` varchar(32) NOT NULL, `SteamID` varchar(32), `Redeemed Time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, `ValidUntil` timestamp)");
 
-            if(Main.Instance.Configuration.Instance.MySQLTableVer == 1)
+            if (Main.Instance.Configuration.Instance.MySQLTableVer == 1)
             {
                 Logger.Log("Updating database table version to 2.");
                 ExecuteQuery(false, $"ALTER TABLE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` ADD `ValidUntil` timestamp;");
@@ -268,7 +301,7 @@ namespace CDK
                 Main.Instance.Configuration.Instance.MySQLTableVer = 2;
                 Main.Instance.Configuration.Save();
             }
-            if(Main.Instance.Configuration.Instance.MySQLTableVer == 2)
+            if (Main.Instance.Configuration.Instance.MySQLTableVer == 2)
             {
                 Logger.Log("Updating database table version to 3.");
                 ExecuteQuery(false, $"ALTER TABLE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` ADD `Owner` varchar(32);");
@@ -282,7 +315,7 @@ namespace CDK
                 Main.Instance.Configuration.Instance.MySQLTableVer = 3;
                 Main.Instance.Configuration.Save();
             }
-            if(Main.Instance.Configuration.Instance.MySQLTableVer == 3)
+            if (Main.Instance.Configuration.Instance.MySQLTableVer == 3)
             {
                 Logger.Log("Updating database table version to 4");
                 ExecuteQuery(true, $"ALTER TABLE `{Main.Instance.Configuration.Instance.DatabaseCDKTableName}` MODIFY `EnableRenew` BOOLEAN DEFALT '0'");
@@ -290,7 +323,13 @@ namespace CDK
                 Main.Instance.Configuration.Instance.MySQLTableVer = 4;
                 Main.Instance.Configuration.Save();
             }
-           
+            if (Main.Instance.Configuration.Instance.MySQLTableVer == 4)
+            {
+                Logger.Log("Updating database table version to 5");
+                ExecuteQuery(true, $"ALTER TABLE `{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` DROP PRIMARY KEY ");
+                Main.Instance.Configuration.Instance.MySQLTableVer = 5;
+            }
+
         }
 
         private MySqlConnection CreateConnection()

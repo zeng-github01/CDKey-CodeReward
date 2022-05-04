@@ -23,7 +23,7 @@ namespace CDK
 
         public void LoadDefaults()
         {
-            MySQLTableVer = 4;
+            MySQLTableVer = 5;
             //MySQLSupport = false;
             //BypassAdmin = true;
             DatabaseAddress = "127.0.0.1";

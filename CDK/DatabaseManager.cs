@@ -328,6 +328,7 @@ namespace CDK
                 Logger.Log("Updating database table version to 5");
                 ExecuteQuery(true, $"ALTER TABLE `{Main.Instance.Configuration.Instance.DatabaseRedeemLogTableName}` DROP PRIMARY KEY ");
                 Main.Instance.Configuration.Instance.MySQLTableVer = 5;
+                Main.Instance.Configuration.Save();
             }
 
         }

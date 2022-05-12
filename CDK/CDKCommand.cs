@@ -75,7 +75,7 @@ namespace CDK
                             UnturnedChat.Say(caller, Main.Instance.Translate("key_renewed"));
                             break;
                         case DatabaseManager.RedeemCDKResult.Error:
-                            UnturnedChat.Say(caller, Main.Instance.Translate("mysql_error"), UnityEngine.Color.red);
+                            UnturnedChat.Say(caller, Main.Instance.Translate("error"), UnityEngine.Color.red);
                             break;
                         case DatabaseManager.RedeemCDKResult.PlayerNotMatch:
                             UnturnedChat.Say(caller, Main.Instance.Translate("player_not_match"), UnityEngine.Color.red);

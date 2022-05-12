@@ -9,19 +9,19 @@ namespace CDK.Data
 {
     public class CDKData
     {
-        public string CDK;
-        public string Items;
-        public string Amount;
-        public ushort? Vehicle;
-        public ushort? Experience;
-        public decimal? Money;
-        public int? Reputation;
-        public string GrantPermissionGroup;
-        public int RedeemedTimes;
-        public int? MaxRedeem;
-        public DateTime ValidUntil;
-        public bool Renew;
-        public CSteamID Owner;
+        public string CDK { get; internal set; }
+        public string Items { get; internal set; }
+        public string Amount { get; internal set; }
+        public ushort? Vehicle { get; internal set; }
+        public ushort? Experience { get; internal set; }
+        public decimal? Money { get; internal set; }
+        public int? Reputation { get; internal set; }
+        public string GrantPermissionGroup { get; internal set; }
+        public int RedeemedTimes { get; internal set; }
+        public int? MaxRedeem { get; internal set; }
+        public DateTime ValidUntil { get; internal set; }
+        public bool Renew { get; internal set; }
+        public CSteamID Owner { get; internal set; }
         public CDKData(string cdk,string items,string amount,ushort? vehicle,ushort? exp,decimal? money,int? reputation,string permissonGroup,int redeemedTimes,int? maxredeem,DateTime validuntill,CSteamID steamID,bool renew)
         {
             CDK = cdk;
